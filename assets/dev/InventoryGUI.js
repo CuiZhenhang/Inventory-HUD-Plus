@@ -25,30 +25,35 @@ const InventoryGUI = (function () {
     }
 
     let autoOpen = false
-    const Transparecy = Math.floor(256 * Settings.transparency - 1e-6)
+    const Transparecy = Math.floor(256 * Settings.opacity - 1e-6)
     const FrameAlpha = CloneTextureWithAlpha('classic_frame_bg_light', Transparecy)
     const SlotAlpha = CloneTextureWithAlpha('classic_slot', Transparecy)
     const LocalContainer = new UI.Container()
     const InventoryGUI = new UI.Window({
-        location: { x: 80, y: 60, width: 320, height: 200 },
+        location: {
+            x: Settings.inventory.x,
+            y: Settings.inventory.y,
+            width: Settings.inventory.width,
+            height: Settings.inventory.width * (200 / 320)
+        },
         drawing: [
             { type: 'background', color: Color.TRANSPARENT },
             { type: 'frame', x: 0, y: 0, width: 1000, height: 625, bitmap: FrameAlpha, scale: 4 }
         ],
         elements: {
-            'helmet': { type: 'slot', visual: true, x: 20 * 2.5, y: 17 * 2.5, z: 2, size: 100, bitmap: SlotAlpha },
-            'chestplate': { type: 'slot', visual: true, x: 60 * 2.5, y: 17 * 2.5, z: 2, size: 100, bitmap: SlotAlpha },
-            'leggings': { type: 'slot', visual: true, x: 100 * 2.5, y: 17 * 2.5, z: 2, size: 100, bitmap: SlotAlpha },
-            'boots': { type: 'slot', visual: true, x: 140 * 2.5, y: 17 * 2.5, z: 2, size: 100, bitmap: SlotAlpha },
-            'offhand': { type: 'slot', visual: true, x: 180 * 2.5, y: 17 * 2.5, z: 2, size: 100, bitmap: SlotAlpha }
+            'helmet': { type: 'slot', visual: true, x: 50, y: 42.5, size: 100, bitmap: SlotAlpha },
+            'chestplate': { type: 'slot', visual: true, x: 150, y: 42.5, size: 100, bitmap: SlotAlpha },
+            'leggings': { type: 'slot', visual: true, x: 250, y: 42.5, size: 100, bitmap: SlotAlpha },
+            'boots': { type: 'slot', visual: true, x: 350, y: 42.5, size: 100, bitmap: SlotAlpha },
+            'offhand': { type: 'slot', visual: true, x: 450, y: 42.5, size: 100, bitmap: SlotAlpha }
         }
     })
     for (let index = 0; index < 36; index++) {
-        let x = (20 + 40 * (index % 9)) * 2.5
-        let y = (index < 9 ? 193 : 65 + 40 * Math.floor((index - 9) / 9)) * 2.5
+        let x = 50 + 100 * (index % 9)
+        let y = index < 9 ? 482.5 : 162.5 + 100 * Math.floor((index - 9) / 9)
         InventoryGUI.content.elements['slot_' + index] = {
             type: 'invSlot',
-            x: x, y: y, z: 2, size: 100,
+            x: x, y: y, size: 100,
             bitmap: SlotAlpha,
             index: index
         }

@@ -1,5 +1,15 @@
 {
   "enabled": true,
   "clientOnly": false,
-  "transparency": 0.5
+  "opacity": 0.5,
+  "information": {
+    "x": 0,
+    "y": 80,
+    "width": 80
+  },
+  "inventory": {
+    "x": 80,
+    "y": 40,
+    "width": 320
+  }
 }

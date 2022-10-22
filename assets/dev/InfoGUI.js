@@ -11,6 +11,7 @@ const InfoGUI = (function () {
             if (item.extra) {
                 /** @todo */
                 let compoundTag = item.extra.getCompoundTag()
+                // compoundTag.getInt('Damage')
                 // compoundTag && Debug(JSON.stringify(compoundTag.toScriptable()), {
                 //     log: true,
                 //     message: true
@@ -64,7 +65,12 @@ const InfoGUI = (function () {
     }
 
     const InfoGUI = new UI.Window({
-        location: { x: 0, y: 80, width: 80, height: 160 },
+        location: {
+            x: Settings.information.x,
+            y: Settings.information.y,
+            width: Settings.information.width,
+            height: Settings.information.width * 2
+        },
         drawing: [
             { type: 'background', color: Color.TRANSPARENT }
         ],
@@ -133,4 +139,3 @@ const InfoGUI = (function () {
 
     return InfoGUI
 })()
-

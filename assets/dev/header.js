@@ -5,7 +5,17 @@
 const IsNewVersion = getMCPEVersion().array[1] >= 16
 const Settings = {
     clientOnly: __config__.getBool('clientOnly'),
-    transparency: Math.min(Math.max(__config__.getFloat('transparency'), 0.1), 1)
+    opacity: Math.min(Math.max(__config__.getFloat('opacity'), 0.1), 1),
+    information: {
+        x: __config__.getFloat('information.x'),
+        y: __config__.getFloat('information.y'),
+        width: __config__.getFloat('information.width')
+    },
+    inventory: {
+        x: __config__.getFloat('inventory.x'),
+        y: __config__.getFloat('inventory.y'),
+        width: __config__.getFloat('inventory.width')
+    }
 }
 
 if (!Settings.clientOnly) IMPORT('VanillaSlots')

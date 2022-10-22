@@ -1,0 +1,78 @@
+{
+  "properties": {
+    "clientOnly": {
+      "description": {
+        "en": "If true, it'll have less functions, but can work without server.",
+        "ru": "If true, it'll have less functions, but can work without server.",
+        "zh": "如果 true，它将有更少功能，但可以不依赖服务端工作。"
+      }
+    },
+    "opacity": {
+      "description": {
+        "en": "Determine the transparency of InventoryGUI. 1 is completely opaque.",
+        "ru": "Determine the transparency of InventoryGUI. 1 is completely opaque.",
+        "zh": "决定 InventoryGUI 的透明度。1 为完全不透明。"
+      }
+    },
+    "information.x": {
+      "description": {
+        "en": "Distance from the left side of the GUI to the left side of the screen.",
+        "ru": "Distance from the left side of the GUI to the left side of the screen.",
+        "zh": "GUI 的左侧到屏幕左侧距离。"
+      },
+      "type": "SeekBar",
+      "min": 0,
+      "max": 1000
+    },
+    "information.y": {
+      "description": {
+        "en": "Distance from the top of the GUI to the top of the screen.",
+        "ru": "Distance from the top of the GUI to the top of the screen.",
+        "zh": "GUI 的顶部到屏幕顶部距离。"
+      },
+      "type": "SeekBar",
+      "min": 0,
+      "max": 600
+    },
+    "information.width": {
+      "description": {
+        "en": "Width of the GUI.",
+        "ru": "Width of the GUI.",
+        "zh": "GUI 的宽度。"
+      },
+      "type": "SeekBar",
+      "min": 10,
+      "max": 200
+    },
+    "inventory.x": {
+      "description": {
+        "en": "Distance from the left side of the GUI to the left side of the screen.",
+        "ru": "Distance from the left side of the GUI to the left side of the screen.",
+        "zh": "GUI 的左侧到屏幕左侧距离。"
+      },
+      "type": "SeekBar",
+      "min": 0,
+      "max": 1000
+    },
+    "inventory.y": {
+      "description": {
+        "en": "Distance from the top of the GUI to the top of the screen.",
+        "ru": "Distance from the top of the GUI to the top of the screen.",
+        "zh": "GUI 的顶部到屏幕顶部距离。"
+      },
+      "type": "SeekBar",
+      "min": 0,
+      "max": 600
+    },
+    "inventory.width": {
+      "description": {
+        "en": "Width of the GUI.",
+        "ru": "Width of the GUI.",
+        "zh": "GUI 的宽度。"
+      },
+      "type": "SeekBar",
+      "min": 100,
+      "max": 800
+    }
+  }
+}
