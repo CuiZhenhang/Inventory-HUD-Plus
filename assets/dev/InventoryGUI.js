@@ -28,7 +28,9 @@ const InventoryGUI = (function () {
     const Transparecy = Math.floor(255 * Settings.opacity)
     const FrameAlpha = Utils.cloneTextureWithAlpha('classic_frame_bg_light', Transparecy)
     const SlotAlpha = Utils.cloneTextureWithAlpha('classic_slot', Transparecy)
-    const IHPSortAlpha = Utils.cloneTextureWithAlpha('ihp_sort', Transparecy)
+    const ShieldSlotAlpha = Utils.cloneTextureWithAlpha(Utils.mixTexture('ihp_shield', 'classic_slot', { x: 0.1, y: 0.1, width: 0.8, height: 0.8, times: 5 }), Transparecy)
+    const DeleleSlotAlpha = Utils.cloneTextureWithAlpha(Utils.mixTexture('ihp_delete', 'classic_slot', { x: 0.1, y: 0.1, width: 0.8, height: 0.8, times: 5 }), Transparecy)
+    const SortAlpha = Utils.cloneTextureWithAlpha('ihp_sort', Transparecy)
     const LocalContainer = new UI.Container()
     const InventoryGUI = new UI.Window({
         location: {
@@ -46,12 +48,13 @@ const InventoryGUI = (function () {
             'chestplate': { type: 'slot', visual: true, x: 150, y: 42.5, size: 100, bitmap: SlotAlpha },
             'leggings': { type: 'slot', visual: true, x: 250, y: 42.5, size: 100, bitmap: SlotAlpha },
             'boots': { type: 'slot', visual: true, x: 350, y: 42.5, size: 100, bitmap: SlotAlpha },
-            'offhand': { type: 'slot', visual: true, x: 450, y: 42.5, size: 100, bitmap: SlotAlpha },
+            'offhand': { type: 'slot', visual: true, x: 450, y: 42.5, size: 100, bitmap: ShieldSlotAlpha },
+            'delete': { type: 'slot', x: 550, y: 42.5, size: 100, bitmap: DeleleSlotAlpha },
             'sort': {
                 type: 'image',
-                x: 560, y: 52.5,
+                x: 660, y: 52.5,
                 width: 80, height: 80,
-                bitmap: IHPSortAlpha,
+                bitmap: SortAlpha,
                 clicker: {
                     onClick: Utils.debounce(function () {
                         runOnClientThread(function () {
@@ -99,6 +102,19 @@ const InventoryGUI = (function () {
         })
     } else {
         /**
+         * @param { Nullable<ItemExtraData> | undefined } extra1 
+         * @param { Nullable<ItemExtraData> | undefined } extra2 
+         * @returns { boolean } 
+         */
+        function isExtraEquals (extra1, extra2) {
+            let empty1 = !extra1 || extra1.isEmpty()
+            let empty2 = !extra2 || extra2.isEmpty()
+            if (empty1 && empty2) return true
+            if (empty1 || empty2) return false
+            return extra1.equals(extra2)
+        }
+
+        /**
          * @param { ItemContainer } container 
          */
         function registerServerEventsForContainer (container) {
@@ -116,6 +132,48 @@ const InventoryGUI = (function () {
                 if(_count <= 0) return;
                 player.setInventorySlot(eventData.slot1, slot1.id, slot1.count - _count, slot1.data, slot1.extra || null);
                 player.setInventorySlot(eventData.slot2, slot1.id, slot2.id != 0 ? slot2.count + _count : _count, slot1.data, slot1.extra || null);
+            })
+            container.addServerEventListener('SlotToInventorySlot', function (container, client, eventData) {
+                // copy from ../lib/VanillaSlots.js line 169-185
+                var player = new PlayerActor(client.getPlayerUid());
+                var slot1 = container.getSlot(eventData.slot1).asScriptable();
+                var transferPolicy1 = container.getGetTransferPolicy(eventData.slot1);
+                var slot2 = player.getInventorySlot(eventData.slot2);
+                if((slot2.id != slot1.id || slot2.data != slot1.data || (slot2.extra != slot1.extra && ((!slot2.extra || slot2.extra.getAllCustomData()) != (!slot1.extra || slot1.extra.getAllCustomData())))) && slot2.id != 0){
+                    player.setInventorySlot(eventData.slot2, slot1.id, slot1.count, slot1.data, slot1.extra);
+                    container.setSlot(eventData.slot1, slot2.id, slot2.count, slot2.data, slot2.extra);
+                    container.sendChanges();
+                    return;
+                }
+                var _count = slot2.id != 0 ? Math.min(eventData.count, Item.getMaxStack(slot2.id) - slot2.count) : eventData.count;
+                if(_count <= 0) return;
+                var transferCount;
+                if(transferPolicy1)_count = (transferCount = transferPolicy1.transfer(container, eventData.slot1, slot1.id, _count, slot1.data, slot1.extra, client.getPlayerUid())) != undefined && transferCount != null ? transferCount : _count;
+                player.setInventorySlot(eventData.slot2, slot1.id, slot2.id != 0 ? slot2.count + _count : _count, slot1.data, slot1.extra);
+                container.setSlot(eventData.slot1, slot1.id, slot1.count - _count, slot1.data, slot1.extra);
+                container.getSlot(eventData.slot1).validate();
+                container.sendChanges();
+            })
+            container.addServerEventListener('InventorySlotToContainerSlot', function (container, client, eventData) {
+                let slotIndex = eventData.slot1
+                let slotId = eventData.slot2
+                switch (slotId) {
+                    case 'delete': {
+                        let actor = new PlayerActor(client.getPlayerUid())
+                        let item = actor.getInventorySlot(slotIndex)
+                        if (!item.id || !item.count) return
+                        let slot = container.getSlot('delete')
+                        if (slot.id === item.id && slot.data === item.data && isExtraEquals(slot.extra, item.extra)) {
+                            let count = Math.min(slot.count + item.count, Item.getMaxStack(slot.id))
+                            container.setSlot('delete', slot.id, count, slot.data, slot.extra)
+                        } else {
+                            container.setSlot('delete', item.id, item.count, item.data, item.extra || null)
+                        }
+                        actor.setInventorySlot(slotIndex, 0, 0, 0, null)
+                        container.sendChanges()
+                        break
+                    }
+                }
             })
         }
 
@@ -135,6 +193,12 @@ const InventoryGUI = (function () {
         })
         Callback.addCallback('ServerPlayerTick', function (player) {
             updateSlots(player, ServerContainer[player])
+        })
+        Callback.addCallback('EntityDeath', function (entity) {
+            if (Entity.getType(entity) !== Native.EntityType.PLAYER) return
+            let container = ServerContainer[entity]
+            if (!container) return
+            container.setSlot('delete', 0, 0, 0)
         })
         Callback.addCallback('ServerPlayerLeft', function (player) {
             delete ServerContainer[player]

@@ -121,6 +121,38 @@ const Utils = {
         UI.TextureSource.put(newName, targetBitmap)
         return newName
     },
+    /**
+     * @param { string } overlayName 
+     * @param { string } backgroundName 
+     * @param { { x?: number, y?: number, width?: number, height?: number, times?: number } = } params 
+     * @returns { string }
+     */
+    mixTexture (overlayName, backgroundName, params) {
+        let overlay = UI.TextureSource.getNullable(overlayName)
+        let background = UI.TextureSource.getNullable(backgroundName)
+        if (!overlay && !background) return 'missing_texture'
+        if (!overlay) return backgroundName
+        if (!background) return overlayName
+        if (!params) params = {}
+        if (!params.x) params.x = 0
+        if (!params.y) params.y = 0
+        if (!params.width) params.width = 1
+        if (!params.height) params.height = 1
+        if (!params.times) params.times = 1
+        let width = background.getWidth() * params.times
+        let height = background.getHeight() * params.times
+        if (params.x < 1) params.x *= width
+        if (params.y < 1) params.y *= height
+        if (params.width <= 1) params.width *= width
+        if (params.height <= 1) params.height *= height
+        let targetBitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+        let canvas = new android.graphics.Canvas(targetBitmap)
+        canvas.drawBitmap(background, null, new android.graphics.RectF(0, 0, width, height), null)
+        canvas.drawBitmap(overlay, null, new android.graphics.RectF(params.x, params.y, params.x + params.width, params.y + params.height), null)
+        let newName = 'mix-' + overlayName + '-' + backgroundName + '-' + Math.floor(Math.random() * 1e5)
+        UI.TextureSource.put(newName, targetBitmap)
+        return newName
+    },
     /** @type { (entity: number) => ItemInstance } */
     getOffhandItem: Entity.getOffhandItem || function (entity) { return { id: 0, count: 0, data: 0 } },
     /**
