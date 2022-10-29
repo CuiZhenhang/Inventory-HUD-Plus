@@ -14,6 +14,16 @@
         "zh": "决定 InventoryGUI 的透明度。1 为完全不透明。"
       }
     },
+    "sortId": {
+      "displayIf": false
+    },
+    "information.alwaysOpen": {
+      "description": {
+        "en": "Make the GUI not easy to close",
+        "ru": "Make the GUI not easy to close",
+        "zh": "使 GUI 不容易关闭"
+      }
+    },
     "information.x": {
       "description": {
         "en": "Distance from the left side of the GUI to the left side of the screen.",

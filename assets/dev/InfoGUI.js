@@ -37,7 +37,7 @@ const InfoGUI = (function () {
         if (String(text).length > 5) {
             let e = 0
             while (text <= -10 || text >= 10) text /= 10, ++e;
-            text = String(text).substring(0, 3 + (text < 0)) + 'e' + e
+            text = String(text).substring(0, 3 + (text < 0 ? 1 : 0)) + 'e' + e
         }
         let color = Color.WHITE
         if (percent >= 0.7) color = Color.rgb(0, 200, 0)
@@ -45,7 +45,7 @@ const InfoGUI = (function () {
         else if (percent >= 0.2) color = Color.rgb(200, 200, 0)
         else if (percent >= 0.1) color = Color.rgb(200, 100, 0)
         else color = Color.rgb(200, 0, 0)
-        element.setText(text, color)
+        element.setText(String(text), color)
     }
 
     /**
@@ -79,10 +79,10 @@ const InfoGUI = (function () {
                 type: 'image', bitmap: 'clear',
                 x: 0, y: 1000, z: 1, width: 500, height: 500,
                 clicker: {
-                    onClick: function () {
+                    onClick: Utils.debounce(function () {
                         if (InventoryGUI.isOpened()) InventoryGUI.close()
                         else InventoryGUI.open()
-                    }
+                    }, 200)
                 }
             },
             'more_text': {
@@ -95,19 +95,23 @@ const InfoGUI = (function () {
     })
     InfoGUI.setAsGameOverlay(true)
     const elements = {
-        'carried': CreateSlotWithTextElement(InfoGUI.content.elements, 'carried', [0, 0, 500]),
-        'offhand': CreateSlotWithTextElement(InfoGUI.content.elements, 'offhand', [0, 500, 500]),
-        'helmet': CreateSlotWithTextElement(InfoGUI.content.elements, 'helmet', [500, 0, 500]),
-        'chestplate': CreateSlotWithTextElement(InfoGUI.content.elements, 'chestplate', [500, 500, 500]),
-        'leggings': CreateSlotWithTextElement(InfoGUI.content.elements, 'leggings', [500, 1000, 500]),
-        'boots': CreateSlotWithTextElement(InfoGUI.content.elements, 'boots', [500, 1500, 500])
+        'carried': Utils.createSlotWithTextElement(InfoGUI.content.elements, 'carried', [0, 0, 500]),
+        'offhand': Utils.createSlotWithTextElement(InfoGUI.content.elements, 'offhand', [0, 500, 500]),
+        'helmet': Utils.createSlotWithTextElement(InfoGUI.content.elements, 'helmet', [500, 0, 500]),
+        'chestplate': Utils.createSlotWithTextElement(InfoGUI.content.elements, 'chestplate', [500, 500, 500]),
+        'leggings': Utils.createSlotWithTextElement(InfoGUI.content.elements, 'leggings', [500, 1000, 500]),
+        'boots': Utils.createSlotWithTextElement(InfoGUI.content.elements, 'boots', [500, 1500, 500])
     }
 
     Callback.addCallback('NativeGuiChanged', function (screenName) {
-        let isHUDScreen = IsHUDScreen(screenName)
+        let isHUDScreen = Utils.isHUDScreen(screenName)
         if (isHUDScreen === InfoGUI.isOpened()) return
         if (isHUDScreen) InfoGUI.open()
-        else InfoGUI.close()
+        else if (!Settings.information.alwaysOpen) InfoGUI.close()
+    })
+
+    Callback.addCallback('LevelLeft', function () {
+        if (InfoGUI.isOpened()) InfoGUI.close()
     })
 
     Callback.addCallback('LevelSelected', function () {
@@ -124,10 +128,10 @@ const InfoGUI = (function () {
             Player.getArmorSlot(Native.ArmorType.chestplate),
             Player.getArmorSlot(Native.ArmorType.leggings),
             Player.getArmorSlot(Native.ArmorType.boots),
-            GetOffhandItem(Player.get())
+            Utils.getOffhandItem(Player.get())
         ]
         for (let i = 0; i < 36; i++) inventory.push(Player.getInventorySlot(i))
-        let sortInventory = GetSortInventory(inventory)
+        let sortInventory = Utils.getSortInventory(inventory)
         setDamage(elements['helmet'], inventory[0])
         setDamage(elements['chestplate'], inventory[1])
         setDamage(elements['leggings'], inventory[2])

@@ -2,7 +2,9 @@
   "enabled": true,
   "clientOnly": false,
   "opacity": 0.5,
+  "sortId": "asc(id)",
   "information": {
+    "alwaysOpen": false,
     "x": 0,
     "y": 80,
     "width": 80

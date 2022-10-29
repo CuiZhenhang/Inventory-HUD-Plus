@@ -20,14 +20,15 @@ const InventoryGUI = (function () {
         setContainerSlot(container, 'chestplate', Entity.getArmorSlot(player, Native.ArmorType.chestplate))
         setContainerSlot(container, 'leggings', Entity.getArmorSlot(player, Native.ArmorType.leggings))
         setContainerSlot(container, 'boots', Entity.getArmorSlot(player, Native.ArmorType.boots))
-        setContainerSlot(container, 'offhand', GetOffhandItem(player))
+        setContainerSlot(container, 'offhand', Utils.getOffhandItem(player))
         container.sendChanges()
     }
 
     let autoOpen = false
-    const Transparecy = Math.floor(256 * Settings.opacity - 1e-6)
-    const FrameAlpha = CloneTextureWithAlpha('classic_frame_bg_light', Transparecy)
-    const SlotAlpha = CloneTextureWithAlpha('classic_slot', Transparecy)
+    const Transparecy = Math.floor(255 * Settings.opacity)
+    const FrameAlpha = Utils.cloneTextureWithAlpha('classic_frame_bg_light', Transparecy)
+    const SlotAlpha = Utils.cloneTextureWithAlpha('classic_slot', Transparecy)
+    const IHPSortAlpha = Utils.cloneTextureWithAlpha('ihp_sort', Transparecy)
     const LocalContainer = new UI.Container()
     const InventoryGUI = new UI.Window({
         location: {
@@ -45,10 +46,25 @@ const InventoryGUI = (function () {
             'chestplate': { type: 'slot', visual: true, x: 150, y: 42.5, size: 100, bitmap: SlotAlpha },
             'leggings': { type: 'slot', visual: true, x: 250, y: 42.5, size: 100, bitmap: SlotAlpha },
             'boots': { type: 'slot', visual: true, x: 350, y: 42.5, size: 100, bitmap: SlotAlpha },
-            'offhand': { type: 'slot', visual: true, x: 450, y: 42.5, size: 100, bitmap: SlotAlpha }
+            'offhand': { type: 'slot', visual: true, x: 450, y: 42.5, size: 100, bitmap: SlotAlpha },
+            'sort': {
+                type: 'image',
+                x: 560, y: 52.5,
+                width: 80, height: 80,
+                bitmap: IHPSortAlpha,
+                clicker: {
+                    onClick: Utils.debounce(function () {
+                        runOnClientThread(function () {
+                            Network.sendToServer('IHP.sortInventory', {
+                                sortId: Settings.sortId
+                            })
+                        })
+                    }, 1000)
+                }
+            }
         }
     })
-    for (let index = 0; index < 36; index++) {
+    for (let index = 0; index < 36; ++index) {
         let x = 50 + 100 * (index % 9)
         let y = index < 9 ? 482.5 : 162.5 + 100 * Math.floor((index - 9) / 9)
         InventoryGUI.content.elements['slot_' + index] = {
@@ -63,8 +79,8 @@ const InventoryGUI = (function () {
     if (Settings.clientOnly) InventoryGUI.setTouchable(false)
 
     Callback.addCallback('NativeGuiChanged', function (screenName) {
-        if (IsHUDScreen(screenName)) {
-            if (autoOpen) {
+        if (Utils.isHUDScreen(screenName)) {
+            if (autoOpen && !InventoryGUI.isOpened()) {
                 if (Settings.clientOnly) LocalContainer.openAs(InventoryGUI)
                 else Network.sendToServer('IHP.InventoryGUI.open', {})
             }
@@ -82,6 +98,27 @@ const InventoryGUI = (function () {
             updateSlots(Player.get(), LocalContainer)
         })
     } else {
+        /**
+         * @param { ItemContainer } container 
+         */
+        function registerServerEventsForContainer (container) {
+            container.addServerEventListener('InventorySlotToSlot', function (container, client, eventData) {
+                // copy from ../lib/VanillaSlots.js line 154-165
+                var player = new PlayerActor(client.getPlayerUid());
+                var slot1 = player.getInventorySlot(eventData.slot1);
+                var slot2 = player.getInventorySlot(eventData.slot2);
+                if((slot2.id != slot1.id || slot2.data != slot1.data || (slot2.extra != slot1.extra && ((!slot2.extra || slot2.extra.getAllCustomData()) != (!slot1.extra || slot1.extra.getAllCustomData())))) && slot2.id != 0){
+                    player.setInventorySlot(eventData.slot1, slot2.id, slot2.count, slot2.data, slot2.extra || null);
+                    player.setInventorySlot(eventData.slot2, slot1.id, slot1.count, slot1.data, slot1.extra || null);
+                    return;
+                }
+                var _count = slot2.id != 0 ? Math.min(eventData.count, Item.getMaxStack(slot2.id) - slot2.count) : eventData.count;
+                if(_count <= 0) return;
+                player.setInventorySlot(eventData.slot1, slot1.id, slot1.count - _count, slot1.data, slot1.extra || null);
+                player.setInventorySlot(eventData.slot2, slot1.id, slot2.id != 0 ? slot2.count + _count : _count, slot1.data, slot1.extra || null);
+            })
+        }
+
         /** @type { {[player: number]: ItemContainer} } */
         const ServerContainer = {}
 
@@ -94,7 +131,7 @@ const InventoryGUI = (function () {
         Callback.addCallback('ServerPlayerLoaded', function (player) {
             let container = ServerContainer[player] = new ItemContainer()
             container.setClientContainerTypeName('IHP.InventoryGUI')
-            VanillaSlots.registerServerEventsForContainer(container)
+            registerServerEventsForContainer(container)
         })
         Callback.addCallback('ServerPlayerTick', function (player) {
             updateSlots(player, ServerContainer[player])
@@ -109,11 +146,21 @@ const InventoryGUI = (function () {
             if (!container) return
             container.openFor(client, 'main')
         })
-        Network.addServerPacket('IHP.InventoryGUI.close', function (client, data) {
+        Network.addServerPacket('IHP.sortInventory', function (client, data) {
             let player = client.getPlayerUid()
-            let container = ServerContainer[player]
-            if (!container) return
-            container.closeFor(client)
+            let actor = new PlayerActor(player)
+            /** @type { Array<ItemInstance> } */
+            let inventory = []
+            for (let index = 9; index < 36; ++index) {
+                inventory.push(actor.getInventorySlot(index))
+            }
+            inventory = Utils.reduceInventory(inventory)
+            let compareFn = Utils.getSortingFn(data.sortId || Utils.defaultSortId)
+            inventory.sort(compareFn)
+            for (let index = 9; index < 36; ++index) {
+                let item = inventory[index - 9] || { id: 0, count: 0, data: 0 }
+                actor.setInventorySlot(index, item.id, item.count, item.data, item.extra || null)
+            }
         })
 
         VanillaSlots.registerForWindow(InventoryGUI)
@@ -129,8 +176,11 @@ const InventoryGUI = (function () {
         },
         close () {
             autoOpen = false
-            if (Settings.clientOnly) LocalContainer.close()
-            else Network.sendToServer('IHP.InventoryGUI.close', {})
+            if (InventoryGUI.isOpened()) {
+                let container = InventoryGUI.getContainer()
+                if (container) container.close()
+                else InventoryGUI.close()
+            }
         }
     }
 })()
