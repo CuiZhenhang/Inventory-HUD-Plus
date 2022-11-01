@@ -1,5 +1,6 @@
 header.js
 translation.js
+SettingsGUI.js
 InfoGUI.js
 InventoryGUI.js
 share.js

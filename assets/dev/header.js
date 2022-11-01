@@ -4,22 +4,25 @@
 
 const IsNewVersion = getMCPEVersion().array[1] >= 16
 const Settings = {
+    /** @readonly */
     clientOnly: __config__.getBool('clientOnly'),
+    /** @readonly */
     opacity: Math.min(Math.max(__config__.getFloat('opacity'), 0.1), 1),
     sortId: String(__config__.getString('sortId')),
     information: {
         alwaysOpen: __config__.getBool('information.alwaysOpen'),
-        x: __config__.getFloat('information.x'),
-        y: __config__.getFloat('information.y'),
-        width: __config__.getFloat('information.width')
+        x: __config__.getInteger('information.x'),
+        y: __config__.getInteger('information.y'),
+        width: __config__.getInteger('information.width')
     },
     inventory: {
-        x: __config__.getFloat('inventory.x'),
-        y: __config__.getFloat('inventory.y'),
-        width: __config__.getFloat('inventory.width')
+        x: __config__.getInteger('inventory.x'),
+        y: __config__.getInteger('inventory.y'),
+        width: __config__.getInteger('inventory.width')
     }
 }
 
+IMPORT('RuntimeConfig:3')
 if (!Settings.clientOnly) IMPORT('VanillaSlots:3')
 
 const Color = android.graphics.Color

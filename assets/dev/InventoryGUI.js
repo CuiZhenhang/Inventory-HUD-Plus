@@ -24,6 +24,17 @@ const InventoryGUI = (function () {
         container.sendChanges()
     }
 
+    /**
+     * @param { UI.Window } ui 
+     */
+    function closeGUI(ui) {
+        if (ui.isOpened()) {
+            let container = ui.getContainer()
+            if (container) container.close()
+            else ui.close()
+        }
+    }
+
     let autoOpen = false
     const Transparecy = Math.floor(255 * Settings.opacity)
     const FrameAlpha = Utils.cloneTextureWithAlpha('classic_frame_bg_light', Transparecy)
@@ -64,6 +75,17 @@ const InventoryGUI = (function () {
                         })
                     }, 1000)
                 }
+            },
+            'close': {
+                type: 'image',
+                x: 890, y: 22.5,
+                width: 80, height: 80,
+                bitmap: 'X',
+                clicker: {
+                    onClick: function () {
+                        closeGUI(InventoryGUI)
+                    }
+                }
             }
         }
     })
@@ -88,11 +110,7 @@ const InventoryGUI = (function () {
                 else Network.sendToServer('IHP.InventoryGUI.open', {})
             }
         } else {
-            if (InventoryGUI.isOpened()) {
-                let container = InventoryGUI.getContainer()
-                if (container) container.close()
-                else InventoryGUI.close()
-            }
+            closeGUI(InventoryGUI)
         }
     })
 
@@ -106,7 +124,7 @@ const InventoryGUI = (function () {
          * @param { Nullable<ItemExtraData> | undefined } extra2 
          * @returns { boolean } 
          */
-        function isExtraEquals (extra1, extra2) {
+        let isExtraEquals = function (extra1, extra2) {
             let empty1 = !extra1 || extra1.isEmpty()
             let empty2 = !extra2 || extra2.isEmpty()
             if (empty1 && empty2) return true
@@ -117,7 +135,7 @@ const InventoryGUI = (function () {
         /**
          * @param { ItemContainer } container 
          */
-        function registerServerEventsForContainer (container) {
+        let registerServerEventsForContainer = function (container) {
             container.addServerEventListener('InventorySlotToSlot', function (container, client, eventData) {
                 // copy from ../lib/VanillaSlots.js line 154-165
                 var player = new PlayerActor(client.getPlayerUid());
@@ -240,11 +258,7 @@ const InventoryGUI = (function () {
         },
         close () {
             autoOpen = false
-            if (InventoryGUI.isOpened()) {
-                let container = InventoryGUI.getContainer()
-                if (container) container.close()
-                else InventoryGUI.close()
-            }
+            closeGUI(InventoryGUI)
         }
     }
 })()

@@ -1,4 +1,4 @@
-/// <reference path='./translation.js'/>
+/// <reference path='./SettingsGUI.js'/>
 
 const InfoGUI = (function () {
     /**
@@ -87,9 +87,18 @@ const InfoGUI = (function () {
             },
             'more_text': {
                 type: 'text',
-                x: 250, y: 1100, z: 2,
+                x: 250, y: 1000, z: 2,
                 font: { color: Color.WHITE, size: 300, align: 1 },
                 text: 'H'
+            },
+            'settings': {
+                type: 'image', bitmap: 'ihp_setting',
+                x: 50, y: 1550, width: 400, height: 400,
+                clicker: {
+                    onClick: Utils.debounce(function () {
+                        SettingsGUI.openSettings()
+                    }, 500)
+                }
             }
         }
     })
