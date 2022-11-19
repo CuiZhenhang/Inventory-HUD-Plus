@@ -2,20 +2,17 @@
 
 const InfoGUI = (function () {
     /**
-     * @param { ItemInstance } item 
+     * @param { NBTItem } nbtItem 
      * @returns { number }
      */
-    function getDamage(item) {
-        let damage = item.data
-        if (IsNewVersion && Item.isNativeItem(item.id)) {
-            if (item.extra) {
-                /** @todo */
-                let compoundTag = item.extra.getCompoundTag()
-                // compoundTag.getInt('Damage')
-                // compoundTag && Debug(JSON.stringify(compoundTag.toScriptable()), {
-                //     log: true,
-                //     message: true
-                // })
+    function getDamage(nbtItem) {
+        let damage = nbtItem.ic.data
+        if (IsNewVersion && Item.isNativeItem(nbtItem.ic.id)) {
+            let tag = nbtItem.nbt.value['tag']
+            let damageNBT = tag && tag.value['Damage']
+            let value = damageNBT && damageNBT.value
+            if (typeof value === 'number') {
+                damage = Math.max(damage, value)
             }
         }
         return damage
@@ -23,14 +20,17 @@ const InfoGUI = (function () {
 
     /**
      * @param { SlotWithTextElement } element 
-     * @param { ItemInstance } item 
+     * @param { Nullable<NBTItem> } nbtItem 
      */
-    function setDamage(element, item) {
-        element.setItem(item)
-        if (!item || item.id === 0) return
-        let maxDamage = Item.getMaxDamage(item.id)
+    function setDamage(element, nbtItem) {
+        if (!nbtItem || !nbtItem.ic || nbtItem.ic.id === 0) {
+            element.setItem(null)
+            return
+        }
+        let maxDamage = Item.getMaxDamage(nbtItem.ic.id)
         if (!maxDamage) return
-        let damage = getDamage(item)
+        let damage = getDamage(nbtItem)
+        nbtItem.ic.data = damage
         let percent = (maxDamage - damage) / Math.max(maxDamage, 10)
         let text = maxDamage - damage
         if (maxDamage >= 20 && percent >= 0.5) text = -damage
@@ -45,18 +45,20 @@ const InfoGUI = (function () {
         else if (percent >= 0.2) color = Color.rgb(200, 200, 0)
         else if (percent >= 0.1) color = Color.rgb(200, 100, 0)
         else color = Color.rgb(200, 0, 0)
+        element.setItem(nbtItem.ic)
         element.setText(String(text), color)
     }
 
     /**
      * @param { SlotWithTextElement } element 
-     * @param { ItemInstance } item 
-     * @param { { [idData: `${number}:${number}`]: number; } } sortInventory 
+     * @param { Nullable<NBTItem> } nbtItem 
+     * @param { { [idData: `${string}:${number}`]: number } } sortInventory 
      */
-    function setCount(element, item, sortInventory) {
-        if (!item || item.id === 0) element.setItem(null)
-        else if (Item.getMaxDamage(item.id)) setDamage(element, item)
+    function setCount(element, nbtItem, sortInventory) {
+        if (!nbtItem || !nbtItem.ic || nbtItem.ic.id === 0) element.setItem(null)
+        else if (Item.getMaxDamage(nbtItem.ic.id)) setDamage(element, nbtItem)
         else {
+            let item = nbtItem.ic
             if (!item.extra || item.extra.isEmpty()) {
                 item.count = Math.max(item.count, sortInventory[item.id + ':' + item.data])
             }
@@ -121,6 +123,8 @@ const InfoGUI = (function () {
 
     Callback.addCallback('LevelLeft', function () {
         if (InfoGUI.isOpened()) InfoGUI.close()
+        for (let name in elements) elements[name].setItem(null)
+        InfoGUI.forceRefresh()
     })
 
     Callback.addCallback('LevelSelected', function () {
@@ -132,20 +136,21 @@ const InfoGUI = (function () {
     Callback.addCallback('LocalTick', function () {
         if (++tick % 4 /* 0.2s */) return
         tick = 0
+        let compoundTag = Entity.getCompoundTag(Player.get())
+        let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
         let inventory = [
-            Player.getArmorSlot(Native.ArmorType.helmet),
-            Player.getArmorSlot(Native.ArmorType.chestplate),
-            Player.getArmorSlot(Native.ArmorType.leggings),
-            Player.getArmorSlot(Native.ArmorType.boots),
-            Utils.getOffhandItem(Player.get())
-        ]
-        for (let i = 0; i < 36; i++) inventory.push(Player.getInventorySlot(i))
+            Utils.getArmorSlot(EArmorType.HELMET, null, snbt),
+            Utils.getArmorSlot(EArmorType.CHESTPLATE, null, snbt),
+            Utils.getArmorSlot(EArmorType.LEGGINGS, null, snbt),
+            Utils.getArmorSlot(EArmorType.BOOTS, null, snbt),
+            Utils.getOffhandItem(null, snbt)
+        ].concat(Utils.getInventory(null, snbt))
         let sortInventory = Utils.getSortInventory(inventory)
         setDamage(elements['helmet'], inventory[0])
         setDamage(elements['chestplate'], inventory[1])
         setDamage(elements['leggings'], inventory[2])
         setDamage(elements['boots'], inventory[3])
-        setCount(elements['carried'], Player.getCarriedItem(), sortInventory)
+        setCount(elements['carried'], Utils.getCarriedItem(), sortInventory)
         setCount(elements['offhand'], inventory[4], sortInventory)
         InfoGUI.forceRefresh()
     })

@@ -1,4 +1,5 @@
 header.js
+NBTItem.js
 translation.js
 SettingsGUI.js
 InfoGUI.js

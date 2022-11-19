@@ -1,4 +1,5 @@
 /// <reference path='../declarations/core-engine.d.ts'/>
+/// <reference path='../declarations/ScriptableNBT.d.ts'/>
 /// <reference path='../declarations/VanillaSlots.d.ts'/>
 /// <reference path='./share.js'/>
 
@@ -23,6 +24,7 @@ const Settings = {
 }
 
 IMPORT('RuntimeConfig:3')
+IMPORT('ScriptableNBT:1')
 if (!Settings.clientOnly) IMPORT('VanillaSlots:3')
 
 const Color = android.graphics.Color
@@ -40,7 +42,7 @@ const Utils = {
         if (option.alert) alert(message)
         if (option.message) Game.message(message)
     },
-    /** @type { <T extends any[], RT = any, TT = any>(func: (this: TT, ...args: T) => RT, wait: number, func2?: Nullable<(this: TT, ...args: T) => RT>, ths?: TT): (...args: T) => RT } */
+    /** @type { <T extends any[], RT = any, TT = any>(func: (this: TT, ...args: T) => RT, delay: number, func2?: Nullable<(this: TT, ...args: T) => RT>, ths?: TT): (...args: T) => RT } */
     debounce (func, delay, func2, ths) {
         if (typeof func !== 'function') return func
         if (typeof delay !== 'number' || isNaN(delay)) return func
@@ -156,19 +158,172 @@ const Utils = {
         UI.TextureSource.put(newName, targetBitmap)
         return newName
     },
-    /** @type { (entity: number) => ItemInstance } */
-    getOffhandItem: Entity.getOffhandItem || function (entity) { return { id: 0, count: 0, data: 0 } },
     /**
-     * @param { Array<ItemInstance> } inventory 
+     * @param { number = } player 
+     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
+     * @returns { Array<Nullable<NBTItem>> }
+     */
+    getInventory (player, snbt) {
+        let compoundTag = Entity.getCompoundTag(player || Player.get())
+        if (!snbt) snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
+        let result = []
+        for (let slot = 0; slot < 36; ++slot) {
+            try {
+                result[slot] = {
+                    ic: player ? new PlayerActor(player).getInventorySlot(slot) : Player.getInventorySlot(slot),
+                    nbt: snbt.value['Inventory'].value[slot]
+                }
+            } catch (err) {
+                result[slot] = null
+            }
+        }
+        return result
+    },
+    /**
+     * @typedef { { ic: ItemInstance, nbt: ScriptableNBT.NBTCompoundValue } } NBTItem 
+     * @param { number } slot 
+     * @param { number = } player 
+     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
+     * @returns { Nullable<NBTItem> }
+     */
+    getInventorySlot (slot, player, snbt) {
+        slot |= 0
+        if (!(0 <= slot && slot < 36)) return null
+        try {
+            let item = player ? new PlayerActor(player).getInventorySlot(slot) : Player.getInventorySlot(slot)
+            if (!snbt) {
+                let compoundTag = Entity.getCompoundTag(player || Player.get())
+                snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
+            }
+            return {
+                ic: item,
+                nbt: snbt.value['Inventory'].value[slot]
+            }
+        } catch (err) {
+            return null
+        }
+    },
+    /**
+     * Attention that we only modified the count
+     * @param { number } slot 
+     * @param { number } player 
+     * @param { Nullable<NBTItem> } nbtItem 
+     */
+    setInventorySlot (slot, player, nbtItem) {
+        slot |= 0
+        if (!(0 <= slot && slot < 36)) return
+        if (!player) return
+        try {
+            if (nbtItem && nbtItem.ic) {
+                if (nbtItem.ic.count !== nbtItem.nbt.value['Count'].value) {
+                    nbtItem.nbt.value['Count'].value = nbtItem.ic.count
+                }
+                nbtItem.nbt.value['Slot'] = new ScriptableNBT.NBTByteValue(slot)
+                let compoundTag = Entity.getCompoundTag(player)
+                let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
+                snbt.value['Inventory'].value[slot] = nbtItem.nbt
+                Entity.setCompoundTag(player, snbt.compoundTag)
+            } else {
+                new PlayerActor(player).setInventorySlot(slot, 0, 0, 0, null)
+            }
+        } catch (err) {
+            return
+        }
+    },
+    /**
+     * @param { number = } player 
+     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
+     * @returns { Nullable<NBTItem> }
+     */
+    getCarriedItem (player, snbt) {
+        let slot = player ? new PlayerActor(player).getSelectedSlot() : Player.getSelectedSlotId()
+        return this.getInventorySlot(slot, player, snbt)
+    },
+    /**
+     * @param { number = } player 
+     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
+     * @returns { Nullable<NBTItem> }
+     */
+    getOffhandItem (player, snbt) {
+        try {
+            if (!player) player = Player.get()
+            let item = Entity.getOffhandItem ? Entity.getOffhandItem(player) : { id: 0, count: 0, data: 0 }
+            if (!snbt) {
+                let compoundTag = Entity.getCompoundTag(player)
+                snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
+            }
+            return {
+                ic: item,
+                nbt: snbt.value['Offhand'].value[0]
+            }
+        } catch (err) {
+            return null
+        }
+    },
+    /**
+     * @param { number } slot 
+     * @param { number = } player 
+     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
+     * @returns { Nullable<NBTItem> }
+     */
+    getArmorSlot (slot, player, snbt) {
+        slot |= 0
+        if (!(0 <= slot && slot < 4)) return null
+        try {
+            if (!player) player = Player.get()
+            let item = Entity.getArmorSlot(player, slot)
+            if (!snbt) {
+                let compoundTag = Entity.getCompoundTag(player)
+                snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
+            }
+            return {
+                ic: item,
+                nbt: snbt.value['Armor'].value[slot]
+            }
+        } catch (err) {
+            return null
+        }
+    },
+    /**
+     * @param { Nullable<ItemExtraData> | undefined } extra1 
+     * @param { Nullable<ItemExtraData> | undefined } extra2 
+     * @returns { boolean } 
+     */
+    isExtraEqual (extra1, extra2) {
+        let empty1 = !extra1 || extra1.isEmpty()
+        let empty2 = !extra2 || extra2.isEmpty()
+        if (empty1 && empty2) return true
+        if (empty1 || empty2) return false
+        return extra1.equals(extra2)
+    },
+    /**
+     * @param { Nullable<NBTItem> } item1 
+     * @param { Nullable<NBTItem> } item2 
+     */
+    isItemStackable (item1, item2) {
+        if (!item1 || !item1.ic || !item2 || !item2.ic) {
+            let empty1 = !item1 || !item1.ic
+            let empty2 = !item2 || !item2.ic
+            return empty1 === empty2
+        }
+        if (item1.ic.id !== item2.ic.id || item1.ic.data !== item2.ic.data) return false
+        if (Item.getMaxStack(item1.ic.id) === 1) return false
+        if (!this.isExtraEqual(item1.ic.extra, item2.ic.extra)) return false
+        return true
+    },
+    /**
+     * @param { Array<Nullable<NBTItem>> } inventory 
      * @returns { {[idData: `${number}:${number}`]: number} }
      */
     getSortInventory (inventory) {
         let sortInventory = {}
-        inventory.forEach(function (item) {
-            if (item.id === 0) return
+        inventory.forEach(function (nbtItem) {
+            if (!nbtItem) return
+            let item = nbtItem.ic
+            if (!item || item.id === 0) return
             if (sortInventory[item.id + ':' + item.data]) {
                 sortInventory[item.id + ':' + item.data] += item.count
-                if(item.data !== -1) sortInventory[item.id + ':-1'] += item.count
+                if (item.data !== -1) sortInventory[item.id + ':-1'] += item.count
             } else {
                 sortInventory[item.id + ':' + item.data] = item.count
                 sortInventory[item.id + ':-1'] = item.count
@@ -177,59 +332,48 @@ const Utils = {
         return sortInventory
     },
     /**
-     * @param { Array<ItemInstance> } inventory 
-     * @returns { Array<ItemInstance> }
+     * @param { Array<Nullable<NBTItem>> } inventory 
+     * @returns { Array<NBTItem> }
      */
     reduceInventory (inventory) {
-        /** @type { {[idData: `${number}:${number}`]: ItemInstance[]} } */
+        let that  = this
+        /** @type { {[idData: `${number}:${number}`]: NBTItem[]} } */
         let inventoryObj = {}
-        inventory.forEach(function (item) {
-            if (item.id === 0) return
+        inventory.forEach(function (nbtItem) {
+            if (!nbtItem) return
+            let item = nbtItem.ic
+            if (!item || item.id === 0) return
             /** @type { `${number}:${number}` } */
             let key = item.id + ':' + item.data
-            if (!inventoryObj[key]) {
-                inventoryObj[key] = [{
-                    id: item.id,
-                    count: 0,
-                    data: item.data
-                }]
-            }
-            if (!item.extra || item.extra.isEmpty()) {
-                inventoryObj[key][0].count += item.count
-            } else {
-                let extra = item.extra
-                let succ = inventoryObj[key].some(function (tItem) {
-                    if (tItem.extra && extra.equals(tItem.extra)) {
-                        tItem.count += item.count
-                        return true
-                    }
-                })
-                if (!succ) {
-                    inventoryObj[key].push({
-                        id: item.id,
-                        count: item.count,
-                        data: item.data,
-                        extra: item.extra
-                    })
-                }
-            }
+            if (!inventoryObj[key]) inventoryObj[key] = []
+            let fail = inventoryObj[key].every(function (tNBTItem) {
+                if (!that.isItemStackable(nbtItem, tNBTItem)) return true
+                tNBTItem.ic.count += nbtItem.ic.count
+                return false
+            })
+            if (fail) inventoryObj[key].push(nbtItem)
         })
-        /** @type { Array<ItemInstance> } */
+        /** @type { Array<NBTItem> } */
         let ret = []
         for (let key  in inventoryObj) {
-            /** @type { Array<ItemInstance> } */
+            /** @type { Array<NBTItem> } */
             let itemList = inventoryObj[key]
-            itemList.forEach(function (item) {
-                if (!item.count) return
+            itemList.forEach(function (nbtItem) {
+                let item = nbtItem.ic
                 let maxStack = Item.getMaxStack(item.id)
                 let count = item.count
                 while (count > 0) {
                     let deltaCount = Math.min(count, maxStack)
+                    let snbt = new ScriptableNBT.NBTCompoundValue(nbtItem.nbt.compoundTag)
+                    snbt.value['Count'].value = deltaCount
                     ret.push({
-                        id: item.id,
-                        count: deltaCount,
-                        data: item.data,
-                        extra: item.extra
+                        ic: {
+                            id: item.id,
+                            count: deltaCount,
+                            data: item.data,
+                            extra: item.extra
+                        },
+                        nbt: snbt
                     })
                     count -= deltaCount
                 }
@@ -239,11 +383,11 @@ const Utils = {
     },
     /** @readonly */
     defaultSortId: 'asc(id)',
-    /** @type { {[sortId: string]: (a: ItemInstance, b: ItemInstance) => number} } */
+    /** @type { {[sortId: string]: (a: NBTItem, b: NBTItem) => number} } */
     sortingFn: {},
     /**
      * @param { string } sortId 
-     * @param { (a: ItemInstance, b: ItemInstance) => number } compareFn 
+     * @param { (a: NBTItem, b: NBTItem) => number } compareFn 
      */
     addSortingFn (sortId, compareFn) {
         if (typeof sortId !== 'string') return
@@ -264,7 +408,7 @@ const Utils = {
     },
     /**
      * @param { string } sortId 
-     * @returns { (a: ItemInstance, b: ItemInstance) => number }
+     * @returns { (a: NBTItem, b: NBTItem) => number }
      */
     getSortingFn (sortId) {
         if (typeof sortId !== 'string') return this.sortingFn[this.defaultSortId]
@@ -274,13 +418,13 @@ const Utils = {
 }
 
 Utils.addSortingFn(Utils.defaultSortId, function (a, b) {
-    if (a.id !== b.id) return a.id - b.id
-    if (a.data !== b.data) return a.data - b.data
-    return b.count - a.count
+    if (a.ic.id !== b.ic.id) return a.ic.id - b.ic.id
+    if (a.ic.data !== b.ic.data) return a.ic.data - b.ic.data
+    return b.ic.count - a.ic.count
 })
 
 Utils.addSortingFn('desc(id)', function (a, b) {
-    if (a.id !== b.id) return b.id - a.id
-    if (a.data !== b.data) return a.data - b.data
-    return b.count - a.count
+    if (a.ic.id !== b.ic.id) return b.ic.id - a.ic.id
+    if (a.ic.data !== b.ic.data) return a.ic.data - b.ic.data
+    return b.ic.count - a.ic.count
 })
