@@ -7,6 +7,14 @@
         "zh": "如果 true，它将有更少功能，但可以不依赖服务端工作。"
       }
     },
+    "stableMode": {
+      "description": {
+        "en": "If true, it will be more stable, but will have the similar bugs about NBT as most of the mods.",
+        "ru": "If true, it will be more stable, but will have the similar bugs about NBT as most of the mods.",
+        "zh": "如果 true，它将更加稳定，但和大多模组一样，有关于 NBT 的 bug。"
+      },
+      "displayIf": "!clientOnly"
+    },
     "opacity": {
       "description": {
         "en": "Determine the transparency of InventoryGUI. 1 is completely opaque.",

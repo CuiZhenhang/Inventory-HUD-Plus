@@ -1,23 +1,7 @@
 /// <reference path='./SettingsGUI.js'/>
 
 const InfoGUI = (function () {
-    /**
-     * @param { NBTItem } nbtItem 
-     * @returns { number }
-     */
-    function getDamage(nbtItem) {
-        let damage = nbtItem.ic.data
-        if (IsNewVersion && Item.isNativeItem(nbtItem.ic.id)) {
-            let tag = nbtItem.nbt.value['tag']
-            let damageNBT = tag && tag.value['Damage']
-            let value = damageNBT && damageNBT.value
-            if (typeof value === 'number') {
-                damage = Math.max(damage, value)
-            }
-        }
-        return damage
-    }
-
+    const ColorOrange = Color.rgb(255, 127, 0)
     /**
      * @param { SlotWithTextElement } element 
      * @param { Nullable<NBTItem> } nbtItem 
@@ -29,7 +13,7 @@ const InfoGUI = (function () {
         }
         let maxDamage = Item.getMaxDamage(nbtItem.ic.id)
         if (!maxDamage) return
-        let damage = getDamage(nbtItem)
+        let damage = Utils.getDamage(nbtItem)
         nbtItem.ic.data = damage
         let percent = (maxDamage - damage) / Math.max(maxDamage, 10)
         let text = maxDamage - damage
@@ -40,11 +24,11 @@ const InfoGUI = (function () {
             text = String(text).substring(0, 3 + (text < 0 ? 1 : 0)) + 'e' + e
         }
         let color = Color.WHITE
-        if (percent >= 0.7) color = Color.rgb(0, 200, 0)
-        else if (percent >= 0.4) color = Color.rgb(0, 200, 200)
-        else if (percent >= 0.2) color = Color.rgb(200, 200, 0)
-        else if (percent >= 0.1) color = Color.rgb(200, 100, 0)
-        else color = Color.rgb(200, 0, 0)
+        if (percent >= 0.7) color = Color.GREEN
+        else if (percent >= 0.4) color = Color.CYAN
+        else if (percent >= 0.2) color = Color.YELLOW
+        else if (percent >= 0.1) color = ColorOrange
+        else color = Color.RED
         element.setItem(nbtItem.ic)
         element.setText(String(text), color)
     }
@@ -134,7 +118,7 @@ const InfoGUI = (function () {
 
     let tick = 0
     Callback.addCallback('LocalTick', function () {
-        if (++tick % 4 /* 0.2s */) return
+        if (++tick % 4 /* 0.1s */) return
         tick = 0
         let compoundTag = Entity.getCompoundTag(Player.get())
         let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)

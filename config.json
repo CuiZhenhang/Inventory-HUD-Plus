@@ -1,6 +1,7 @@
 {
   "enabled": true,
   "clientOnly": false,
+  "stableMode": true,
   "opacity": 0.5,
   "sortId": "asc(id)",
   "information": {

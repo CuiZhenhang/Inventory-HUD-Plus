@@ -68,6 +68,7 @@ const InventoryGUI = (function () {
                 bitmap: SortAlpha,
                 clicker: {
                     onClick: Utils.debounce(function () {
+                        if (Settings.clientOnly) return
                         runOnClientThread(function () {
                             Network.sendToServer('IHP.sortInventory', {
                                 sortId: Settings.sortId
@@ -117,22 +118,11 @@ const InventoryGUI = (function () {
 
     if (Settings.clientOnly) {
         Callback.addCallback('LocalTick', function () {
-            updateSlots(Player.get(), LocalContainer)
+            if (Math.random() * 10 < 1) {
+                updateSlots(Player.get(), LocalContainer)
+            }
         })
     } else {
-        /**
-         * @param { Nullable<ItemExtraData> | undefined } extra1 
-         * @param { Nullable<ItemExtraData> | undefined } extra2 
-         * @returns { boolean } 
-         */
-        let isExtraEquals = function (extra1, extra2) {
-            let empty1 = !extra1 || extra1.isEmpty()
-            let empty2 = !extra2 || extra2.isEmpty()
-            if (empty1 && empty2) return true
-            if (empty1 || empty2) return false
-            return extra1.equals(extra2)
-        }
-
         /**
          * @param { ItemContainer } container 
          */
@@ -145,12 +135,21 @@ const InventoryGUI = (function () {
                 if (Utils.isItemStackable(nbtItem1, nbtItem2)) {
                     if (!nbtItem2 || !nbtItem2.ic) return
                     let maxStack = Item.getMaxStack(nbtItem2.ic.id)
-                    let deltaCount = Math.min(nbtItem1.ic.count, maxStack - nbtItem2.ic.count)
+                    let deltaCount = Math.min(nbtItem1.ic.count, maxStack - nbtItem2.ic.count, eventData.count)
                     if (deltaCount === 0) return
                     nbtItem1.ic.count -= deltaCount, nbtItem2.ic.count += deltaCount
                     nbtItem1.nbt.value['Count'].value -= deltaCount, nbtItem2.nbt.value['Count'].value += deltaCount
                     Utils.setInventorySlot(slot1, player, nbtItem1)
                     Utils.setInventorySlot(slot2, player, nbtItem2)
+                } else if (nbtItem2.ic.id === 0) {
+                    let deltaCount = Math.min(nbtItem1.ic.count, eventData.count)
+                    if (deltaCount === 0) return
+                    nbtItem1.ic.count -= deltaCount
+                    nbtItem1.nbt.value['Count'].value -= deltaCount
+                    Utils.setInventorySlot(slot1, player, nbtItem1)
+                    nbtItem1.ic.count = deltaCount
+                    nbtItem1.nbt.value['Count'].value = deltaCount
+                    Utils.setInventorySlot(slot2, player, nbtItem1)
                 } else {
                     Utils.setInventorySlot(slot1, player, nbtItem2)
                     Utils.setInventorySlot(slot2, player, nbtItem1)
@@ -186,7 +185,7 @@ const InventoryGUI = (function () {
                         let item = actor.getInventorySlot(slotIndex)
                         if (!item.id || !item.count) return
                         let slot = container.getSlot('delete')
-                        if (slot.id === item.id && slot.data === item.data && isExtraEquals(slot.extra, item.extra)) {
+                        if (slot.id === item.id && slot.data === item.data && Utils.isExtraEqual(slot.extra, item.extra)) {
                             let count = Math.min(slot.count + item.count, Item.getMaxStack(slot.id))
                             container.setSlot('delete', slot.id, count, slot.data, slot.extra)
                         } else {
@@ -215,7 +214,9 @@ const InventoryGUI = (function () {
             registerServerEventsForContainer(container)
         })
         Callback.addCallback('ServerPlayerTick', function (player) {
-            updateSlots(player, ServerContainer[player])
+            if (Math.random() * 10 < 1) {
+                updateSlots(player, ServerContainer[player])
+            }
         })
         Callback.addCallback('EntityDeath', function (entity) {
             if (Entity.getType(entity) !== EEntityType.PLAYER) return

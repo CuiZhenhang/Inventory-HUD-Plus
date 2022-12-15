@@ -8,6 +8,8 @@ const Settings = {
     /** @readonly */
     clientOnly: __config__.getBool('clientOnly'),
     /** @readonly */
+    stableMode: __config__.getBool('stableMode'),
+    /** @readonly */
     opacity: Math.min(Math.max(__config__.getFloat('opacity'), 0.1), 1),
     sortId: String(__config__.getString('sortId')),
     information: {
@@ -42,7 +44,7 @@ const Utils = {
         if (option.alert) alert(message)
         if (option.message) Game.message(message)
     },
-    /** @type { <T extends any[], RT = any, TT = any>(func: (this: TT, ...args: T) => RT, delay: number, func2?: Nullable<(this: TT, ...args: T) => RT>, ths?: TT): (...args: T) => RT } */
+    /** @type { <T extends any[], RT = any, TT = any>(func: (this: TT, ...args: T) => RT, delay: number, func2?: Nullable<(this: TT, ...args: T) => RT>, ths?: TT) => (...args: T) => RT } */
     debounce (func, delay, func2, ths) {
         if (typeof func !== 'function') return func
         if (typeof delay !== 'number' || isNaN(delay)) return func
@@ -85,8 +87,8 @@ const Utils = {
         }
         elements[name + '_text'] = {
             type: 'text',
-            x: params[0] + 0.8 * params[2], y: params[1] + 0.5 * params[2], z: 2,
-            font: { color: Color.WHITE, size: 0.3 * params[2], align: 2 },
+            x: params[0] + 0.8 * params[2], y: params[1] + 0.55 * params[2], z: 2,
+            font: { color: Color.WHITE, size: 0.25 * params[2], align: 2, shadow: 0.2 },
             text: ''
         }
         return {
@@ -215,14 +217,21 @@ const Utils = {
         if (!player) return
         try {
             if (nbtItem && nbtItem.ic) {
-                if (nbtItem.ic.count !== nbtItem.nbt.value['Count'].value) {
-                    nbtItem.nbt.value['Count'].value = nbtItem.ic.count
+                if (Settings.stableMode) {
+                    let item = nbtItem.ic
+                    let maxDamage = Item.getMaxDamage(item.id)
+                    if (maxDamage) item.data = this.getDamage(nbtItem)
+                    new PlayerActor(player).setInventorySlot(slot, item.id, item.count, item.data, item.extra)
+                } else {
+                    if (nbtItem.ic.count !== nbtItem.nbt.value['Count'].value) {
+                        nbtItem.nbt.value['Count'].value = nbtItem.ic.count
+                    }
+                    nbtItem.nbt.value['Slot'] = new ScriptableNBT.NBTByteValue(slot)
+                    let compoundTag = Entity.getCompoundTag(player)
+                    let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
+                    snbt.value['Inventory'].value[slot] = nbtItem.nbt
+                    Entity.setCompoundTag(player, snbt.compoundTag)
                 }
-                nbtItem.nbt.value['Slot'] = new ScriptableNBT.NBTByteValue(slot)
-                let compoundTag = Entity.getCompoundTag(player)
-                let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
-                snbt.value['Inventory'].value[slot] = nbtItem.nbt
-                Entity.setCompoundTag(player, snbt.compoundTag)
             } else {
                 new PlayerActor(player).setInventorySlot(slot, 0, 0, 0, null)
             }
@@ -310,6 +319,22 @@ const Utils = {
         if (Item.getMaxStack(item1.ic.id) === 1) return false
         if (!this.isExtraEqual(item1.ic.extra, item2.ic.extra)) return false
         return true
+    },
+    /**
+     * @param { NBTItem } nbtItem 
+     * @returns { number }
+     */
+    getDamage (nbtItem) {
+        let damage = nbtItem.ic.data
+        if (IsNewVersion && Item.isNativeItem(nbtItem.ic.id)) {
+            let tag = nbtItem.nbt.value['tag']
+            let damageNBT = tag && tag.value['Damage']
+            let value = damageNBT && damageNBT.value
+            if (typeof value === 'number') {
+                damage = Math.max(damage, value)
+            }
+        }
+        return damage
     },
     /**
      * @param { Array<Nullable<NBTItem>> } inventory 
