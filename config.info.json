@@ -10,7 +10,7 @@
     "stableMode": {
       "description": {
         "en": "If true, it will be more stable, but will have the similar bugs about NBT as most of the mods.",
-        "ru": "If true, it will be more stable, but will have the similar bugs about NBT as most of the mods.",
+        "ru": "Если включено, то подверженные сбоям NBT модули, будут заменены более стабильными модулями, но появятся некоторое проблемы с миром, данные которого хранились до замены модулей в NBT формате",
         "zh": "如果 true，它将更加稳定，但和大多模组一样，有关于 NBT 的 bug。"
       },
       "displayIf": "!clientOnly"
