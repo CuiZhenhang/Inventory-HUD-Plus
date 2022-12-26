@@ -162,18 +162,18 @@ const Utils = {
     },
     /**
      * @param { number = } player 
-     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
      * @returns { Array<Nullable<NBTItem>> }
      */
-    getInventory (player, snbt) {
+    getInventory (player) {
         let compoundTag = Entity.getCompoundTag(player || Player.get())
-        if (!snbt) snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
         let result = []
+        let inventoryNBT = compoundTag.getListTagNoClone('Inventory')
         for (let slot = 0; slot < 36; ++slot) {
             try {
+                let itemNBT = inventoryNBT.getCompoundTag(slot)
                 result[slot] = {
                     ic: player ? new PlayerActor(player).getInventorySlot(slot) : Player.getInventorySlot(slot),
-                    nbt: snbt.value['Inventory'].value[slot]
+                    nbt: new ScriptableNBT.NBTCompoundValue(itemNBT)
                 }
             } catch (err) {
                 result[slot] = null
@@ -185,21 +185,19 @@ const Utils = {
      * @typedef { { ic: ItemInstance, nbt: ScriptableNBT.NBTCompoundValue } } NBTItem 
      * @param { number } slot 
      * @param { number = } player 
-     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
      * @returns { Nullable<NBTItem> }
      */
-    getInventorySlot (slot, player, snbt) {
+    getInventorySlot (slot, player) {
         slot |= 0
         if (!(0 <= slot && slot < 36)) return null
         try {
             let item = player ? new PlayerActor(player).getInventorySlot(slot) : Player.getInventorySlot(slot)
-            if (!snbt) {
-                let compoundTag = Entity.getCompoundTag(player || Player.get())
-                snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
-            }
+            let compoundTag = Entity.getCompoundTag(player || Player.get())
+            let inventoryNBT = compoundTag.getListTagNoClone('Inventory')
+            let itemNBT = inventoryNBT.getCompoundTag(slot)
             return {
                 ic: item,
-                nbt: snbt.value['Inventory'].value[slot]
+                nbt: new ScriptableNBT.NBTCompoundValue(itemNBT)
             }
         } catch (err) {
             return null
@@ -228,9 +226,9 @@ const Utils = {
                     }
                     nbtItem.nbt.value['Slot'] = new ScriptableNBT.NBTByteValue(slot)
                     let compoundTag = Entity.getCompoundTag(player)
-                    let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
-                    snbt.value['Inventory'].value[slot] = nbtItem.nbt
-                    Entity.setCompoundTag(player, snbt.compoundTag)
+                    let inventoryNBT = compoundTag.getListTagNoClone('Inventory')
+                    inventoryNBT.putCompoundTag(slot, nbtItem.nbt.compoundTag)
+                    Entity.setCompoundTag(player, compoundTag)
                 }
             } else {
                 new PlayerActor(player).setInventorySlot(slot, 0, 0, 0, null)
@@ -241,29 +239,26 @@ const Utils = {
     },
     /**
      * @param { number = } player 
-     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
      * @returns { Nullable<NBTItem> }
      */
-    getCarriedItem (player, snbt) {
+    getCarriedItem (player) {
         let slot = player ? new PlayerActor(player).getSelectedSlot() : Player.getSelectedSlotId()
-        return this.getInventorySlot(slot, player, snbt)
+        return this.getInventorySlot(slot, player)
     },
     /**
      * @param { number = } player 
-     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
      * @returns { Nullable<NBTItem> }
      */
-    getOffhandItem (player, snbt) {
+    getOffhandItem (player) {
         try {
             if (!player) player = Player.get()
             let item = Entity.getOffhandItem ? Entity.getOffhandItem(player) : { id: 0, count: 0, data: 0 }
-            if (!snbt) {
-                let compoundTag = Entity.getCompoundTag(player)
-                snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
-            }
+            let compoundTag = Entity.getCompoundTag(player)
+            let offhandNBT = compoundTag.getListTagNoClone('Offhand')
+            let itemNBT = offhandNBT.getCompoundTag(0)
             return {
                 ic: item,
-                nbt: snbt.value['Offhand'].value[0]
+                nbt: new ScriptableNBT.NBTCompoundValue(itemNBT)
             }
         } catch (err) {
             return null
@@ -272,22 +267,20 @@ const Utils = {
     /**
      * @param { number } slot 
      * @param { number = } player 
-     * @param { ScriptableNBT.NBTCompoundValue = } snbt 
      * @returns { Nullable<NBTItem> }
      */
-    getArmorSlot (slot, player, snbt) {
+    getArmorSlot (slot, player) {
         slot |= 0
         if (!(0 <= slot && slot < 4)) return null
         try {
             if (!player) player = Player.get()
             let item = Entity.getArmorSlot(player, slot)
-            if (!snbt) {
-                let compoundTag = Entity.getCompoundTag(player)
-                snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
-            }
+            let compoundTag = Entity.getCompoundTag(player)
+            let armorNBT = compoundTag.getListTagNoClone('Armor')
+            let itemNBT = armorNBT.getCompoundTag(slot)
             return {
                 ic: item,
-                nbt: snbt.value['Armor'].value[slot]
+                nbt: new ScriptableNBT.NBTCompoundValue(itemNBT)
             }
         } catch (err) {
             return null

@@ -118,9 +118,7 @@ const InventoryGUI = (function () {
 
     if (Settings.clientOnly) {
         Callback.addCallback('LocalTick', function () {
-            if (Math.random() * 10 < 1) {
-                updateSlots(Player.get(), LocalContainer)
-            }
+            updateSlots(Player.get(), LocalContainer)
         })
     } else {
         /**
@@ -214,9 +212,7 @@ const InventoryGUI = (function () {
             registerServerEventsForContainer(container)
         })
         Callback.addCallback('ServerPlayerTick', function (player) {
-            if (Math.random() * 10 < 1) {
-                updateSlots(player, ServerContainer[player])
-            }
+            updateSlots(player, ServerContainer[player])
         })
         Callback.addCallback('EntityDeath', function (entity) {
             if (Entity.getType(entity) !== EEntityType.PLAYER) return

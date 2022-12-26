@@ -36,17 +36,23 @@ const InfoGUI = (function () {
     /**
      * @param { SlotWithTextElement } element 
      * @param { Nullable<NBTItem> } nbtItem 
-     * @param { { [idData: `${string}:${number}`]: number } } sortInventory 
+     * @param { number } count 
      */
-    function setCount(element, nbtItem, sortInventory) {
+    function setCount(element, nbtItem, count) {
         if (!nbtItem || !nbtItem.ic || nbtItem.ic.id === 0) element.setItem(null)
         else if (Item.getMaxDamage(nbtItem.ic.id)) setDamage(element, nbtItem)
         else {
             let item = nbtItem.ic
+            let itemCount = item.count
             if (!item.extra || item.extra.isEmpty()) {
-                item.count = Math.max(item.count, sortInventory[item.id + ':' + item.data])
+                itemCount = Math.max(itemCount, count)
             }
-            element.setItem(item)
+            element.setItem({
+                id: item.id,
+                count: itemCount,
+                data: item.data,
+                extra: item.extra
+            })
         }
     }
 
@@ -120,22 +126,45 @@ const InfoGUI = (function () {
     Callback.addCallback('LocalTick', function () {
         if (++tick % 4 /* 0.1s */) return
         tick = 0
-        let compoundTag = Entity.getCompoundTag(Player.get())
-        let snbt = new ScriptableNBT.NBTCompoundValue(compoundTag)
-        let inventory = [
-            Utils.getArmorSlot(EArmorType.HELMET, null, snbt),
-            Utils.getArmorSlot(EArmorType.CHESTPLATE, null, snbt),
-            Utils.getArmorSlot(EArmorType.LEGGINGS, null, snbt),
-            Utils.getArmorSlot(EArmorType.BOOTS, null, snbt),
-            Utils.getOffhandItem(null, snbt)
-        ].concat(Utils.getInventory(null, snbt))
-        let sortInventory = Utils.getSortInventory(inventory)
-        setDamage(elements['helmet'], inventory[0])
-        setDamage(elements['chestplate'], inventory[1])
-        setDamage(elements['leggings'], inventory[2])
-        setDamage(elements['boots'], inventory[3])
-        setCount(elements['carried'], Utils.getCarriedItem(), sortInventory)
-        setCount(elements['offhand'], inventory[4], sortInventory)
+        let armor = [
+            Utils.getArmorSlot(EArmorType.HELMET),
+            Utils.getArmorSlot(EArmorType.CHESTPLATE),
+            Utils.getArmorSlot(EArmorType.LEGGINGS),
+            Utils.getArmorSlot(EArmorType.BOOTS),
+        ]
+        setDamage(elements['helmet'], armor[0])
+        setDamage(elements['chestplate'], armor[1])
+        setDamage(elements['leggings'], armor[2])
+        setDamage(elements['boots'], armor[3])
+        let carried = Utils.getCarriedItem()
+        let offhand = Utils.getOffhandItem()
+        let carriedItem = (carried && carried.ic) || { id: 0, count: 0, data: 0 }
+        let offhandItem = (offhand && offhand.ic) || { id: 0, count: 0, data: 0 }
+        let carriedCount = 0, offhandCount = offhandItem.id ? offhandItem.count : 0
+        if (offhandItem.id && offhandItem.id === carriedItem.id && offhandItem.data === carriedItem.data) {
+            carriedCount += offhandItem.count
+        }
+        armor.forEach(function (nbtItem) {
+            if (!nbtItem || !nbtItem.ic || nbtItem.ic.id === 0) return
+            if (nbtItem.ic.id === carriedItem.id && nbtItem.ic.data === carriedItem.data) {
+                carriedCount += nbtItem.ic.count
+            }
+            if (nbtItem.ic.id === offhandItem.id && nbtItem.ic.data === offhandItem.data) {
+                offhandCount += nbtItem.ic.count
+            }
+        })
+        for (let slot = 0; slot < 36; ++slot) {
+            let item = Player.getInventorySlot(slot)
+            if (item.id === 0) continue
+            if (item.id === carriedItem.id && item.data === carriedItem.data) {
+                carriedCount += item.count
+            }
+            if (item.id === offhandItem.id && item.data === offhandItem.data) {
+                offhandCount += item.count
+            }
+        }
+        setCount(elements['carried'], carried, carriedCount)
+        setCount(elements['offhand'], offhand, offhandCount)
         InfoGUI.forceRefresh()
     })
 
