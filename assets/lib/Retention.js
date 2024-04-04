@@ -19,7 +19,7 @@ LIBRARY({
     name: "Retention",
     version: 5,
     api: "AdaptedScript",
-    shared: true
+    shared: false // !!! modified for compatibility of ZoteCoreLoader
 });
 var _a, _b;
 /**
@@ -51,11 +51,13 @@ EXPORT("minecraftVersion", minecraftVersion);
  * required to perform interactions with Android.
  */
 var getContext = function () { return UI.getContext(); };
+// !!! ------modify begin------
 try {
     getContext().getWindowManager().getDefaultDisplay();
 } catch (error) {
     getContext = function () { return null; };
 }
+// !!! ------modify end------
 EXPORT("getContext", getContext);
 /**
  * @internal
