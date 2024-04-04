@@ -134,7 +134,7 @@ const SettingsGUI = (function () {
 
     return {
         openSettings: function () {
-            showConfig(getArguments(), tempSettings, updateSettings)
+            if (getContext()) showConfig(getArguments(), tempSettings, updateSettings)
         }
     }
 })()

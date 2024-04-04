@@ -11,12 +11,13 @@ declare namespace ScriptableNBT {
          */
         get value(): Nullable<T>;
         /**
-         * Set the Scriptable NBT data.
-         * With automatic check type and range.
+         * Set the Scriptable NBT data.\
+         * With automatic check for type and range.
          */
         set value(value: Nullable<T>);
         /**
-         * Set the Scriptable NBT data from compound tag
+         * Set the Scriptable NBT data from compound tag.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
          * @param compoundTag source compound tag
          * @param key for the specified key
          */
@@ -28,7 +29,8 @@ declare namespace ScriptableNBT {
          */
         applyToCompoundTag(compoundTag: NBT.CompoundTag, key: string): void;
         /**
-         * Set the Scriptable NBT data from list tag
+         * Set the Scriptable NBT data from list tag.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
          * @param listTag source list tag
          * @param index for the specified index
          */
@@ -133,10 +135,23 @@ declare namespace ScriptableNBT {
         readonly type = ENbtDataType.TYPE_LIST;
         private _value;
         constructor(value?: Nullable<Array<INBTValue<any>> | NBT.ListTag>);
+        /**
+         * Get the Scriptable NBT data.\
+         * **Attention**, the operation `get` will create a instance for each of its child elements,
+         * which could lead to a performance issue if unproperly used.\
+         * Consider using `NBTListValue.get` instead.
+         */
         get value(): Nullable<Array<INBTValue<any>>>;
         set value(value: Nullable<Array<INBTValue<any>> | NBT.ListTag>);
         /**
-         * Get the Scriptable NBT data as [[NBT.ListTag]]
+         * Get NBT value of specified index as Scriptable NBT data
+         * @param index the specified index
+         * @returns Scriptable NBT data if specified index exists in list tag. Otherwise is null.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
+         */
+        get(index: number): Nullable<INBTValue<any>>;
+        /**
+         * Get the Scriptable NBT data as [[NBT.ListTag]]. It's a clone.
          */
         get listTag(): Nullable<NBT.ListTag>;
         fromCompoundTag(compoundTag: NBT.CompoundTag, key: string): void;
@@ -152,6 +167,12 @@ declare namespace ScriptableNBT {
         constructor(value?: Nullable<{
             [key: string]: INBTValue<any>;
         } | NBT.CompoundTag>);
+        /**
+         * Get the Scriptable NBT data.\
+         * **Attention**, the operation `get` will create a instance for each of its child elements,
+         * which could lead to a performance issue if unproperly used.\
+         * Consider using `NBTCompoundValue.get` instead.
+         */
         get value(): Nullable<{
             [key: string]: INBTValue<any>;
         }>;
@@ -159,9 +180,21 @@ declare namespace ScriptableNBT {
             [key: string]: INBTValue<any>;
         } | NBT.CompoundTag>);
         /**
-         * Get the Scriptable NBT data as [[NBT.CompoundTag]]
+         * Get NBT value of specified key as Scriptable NBT data
+         * @param key the specified key
+         * @returns Scriptable NBT data if specified key exists in compound tag. Otherwise is null.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
+         */
+        get(key: string): Nullable<INBTValue<any>>;
+        /**
+         * Get the Scriptable NBT data as [[NBT.CompoundTag]]. It's a clone.
          */
         get compoundTag(): Nullable<NBT.CompoundTag>;
+        /**
+         * Get the Scriptable NBT data as [[NBT.CompoundTag]]. It's a reference.\
+         * If the type of inner value is not [[NBT.CompoundTag]], null is returned.
+         */
+        get refCompoundTag(): Nullable<NBT.CompoundTag>;
         fromCompoundTag(compoundTag: NBT.CompoundTag, key: string): void;
         applyToCompoundTag(compoundTag: NBT.CompoundTag, key: string): void;
         fromListTag(listTag: NBT.ListTag, index: number): void;
@@ -200,16 +233,40 @@ declare namespace ScriptableNBT {
          * Get NBT value of specified key as Scriptable NBT data
          * @param compoundTag source compound tag
          * @param key the specified key
-         * @returns Scriptable NBT data if specified key exists in compound tag. Otherwise is null.
+         * @returns Scriptable NBT data if specified key exists in compound tag. Otherwise is null.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
          */
         static getCompoundTagValue(compoundTag: NBT.CompoundTag, key: string): Nullable<INBTValue<any>>;
         /**
          * Get NBT value of specified index as Scriptable NBT data
          * @param listTag source list tag
          * @param index the specified index
-         * @returns Scriptable NBT data if specified index exists in list tag. Otherwise is null.
+         * @returns Scriptable NBT data if specified index exists in list tag. Otherwise is null.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
          */
         static getListTagValue(listTag: NBT.ListTag, index: number): Nullable<INBTValue<any>>;
+        /**
+         * Get NBT of specified keys and indexes
+         * @param tag source compound tag or list tag
+         * @param args the specified keys and indexes
+         * @returns a reference to the compound tag or list tag
+         */
+        static getTag(tag: NBT.CompoundTag | NBT.ListTag, ...args: Array<string | number>): Nullable<NBT.CompoundTag | NBT.ListTag>;
+        /**
+         * Get NBT value of specified keys and indexes as Scriptable NBT data
+         * @param tag source compound tag or list tag
+         * @param args the specified keys and indexes. Should not be empty.
+         * @returns Scriptable NBT data if specified index exists in list tag.\
+         * If this is instance of `NBTListValue` or `NBTCompoundValue`, it's a reference but not a clone.
+         */
+        static getTagValue(tag: NBT.CompoundTag | NBT.ListTag, ...args: Array<string | number>): Nullable<INBTValue<any>>;
+        /**
+         * Set NBT value of specified keys and indexes by Scriptable NBT data
+         * @param tag source compound tag or list tag
+         * @param value Scriptable NBT data
+         * @param args the specified keys and indexes. Should not be empty.
+         */
+        static setTagValue(tag: NBT.CompoundTag | NBT.ListTag, value: INBTValue<any>, ...args: Array<string | number>): void;
         /**
          * Parse the [[JsonListTag]] or [[JsonCompoundTag]] into Scriptable NBT data
          * @param json [[JsonListTag]] or [[JsonCompoundTag]]

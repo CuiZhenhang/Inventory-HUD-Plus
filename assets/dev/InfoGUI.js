@@ -1,7 +1,7 @@
 /// <reference path='./SettingsGUI.js'/>
 
 const InfoGUI = (function () {
-    const ColorOrange = Color.rgb(255, 127, 0)
+    const ColorOrange = getContext() ? Color.rgb(255, 127, 0) : void 0
     /**
      * @param { SlotWithTextElement } element 
      * @param { Nullable<NBTItem> } nbtItem 

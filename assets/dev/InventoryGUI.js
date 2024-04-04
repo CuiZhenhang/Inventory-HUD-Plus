@@ -136,30 +136,35 @@ const InventoryGUI = (function () {
                     let deltaCount = Math.min(nbtItem1.ic.count, maxStack - nbtItem2.ic.count, eventData.count)
                     if (deltaCount === 0) return
                     nbtItem1.ic.count -= deltaCount, nbtItem2.ic.count += deltaCount
-                    nbtItem1.nbt.value['Count'].value -= deltaCount, nbtItem2.nbt.value['Count'].value += deltaCount
+                    void (((nbtItem1.nbt.value || {})['Count'] || {}).value -= deltaCount)
+                    void (((nbtItem2.nbt.value || {})['Count'] || {}).value += deltaCount)
                     Utils.setInventorySlot(slot1, player, nbtItem1)
                     Utils.setInventorySlot(slot2, player, nbtItem2)
                 } else if (nbtItem2.ic.id === 0) {
                     let deltaCount = Math.min(nbtItem1.ic.count, eventData.count)
                     if (deltaCount === 0) return
                     nbtItem1.ic.count -= deltaCount
-                    nbtItem1.nbt.value['Count'].value -= deltaCount
+                    void (((nbtItem1.nbt.value || {})['Count'] || {}).value -= deltaCount)
                     Utils.setInventorySlot(slot1, player, nbtItem1)
+                    // because nbtItem2 is empty
                     nbtItem1.ic.count = deltaCount
-                    nbtItem1.nbt.value['Count'].value = deltaCount
+                    void (((nbtItem1.nbt.value || {})['Count'] || {}).value += deltaCount)
                     Utils.setInventorySlot(slot2, player, nbtItem1)
                 } else {
                     Utils.setInventorySlot(slot1, player, nbtItem2)
                     Utils.setInventorySlot(slot2, player, nbtItem1)
                 }
             })
-            container.addServerEventListener('SlotToInventorySlot', function (container, client, eventData) {
-                // copy from ../lib/VanillaSlots.js line 169-185
-                var player = new PlayerActor(client.getPlayerUid());
+            container.addServerEventListener('SlotToInventorySlot', function (container, connectedClient, eventData) {
+                // copy from ../lib/VanillaSlots.js (version 4) line 175-194
+                var player = new PlayerActor(connectedClient.getPlayerUid());
                 var slot1 = container.getSlot(eventData.slot1).asScriptable();
                 var transferPolicy1 = container.getGetTransferPolicy(eventData.slot1);
                 var slot2 = player.getInventorySlot(eventData.slot2);
                 if((slot2.id != slot1.id || slot2.data != slot1.data || (slot2.extra != slot1.extra && ((!slot2.extra || slot2.extra.getAllCustomData()) != (!slot1.extra || slot1.extra.getAllCustomData())))) && slot2.id != 0){
+                    var transferPolicy2 = container.getAddTransferPolicy(eventData.slot1);
+                    if(transferPolicy1 && transferPolicy1.transfer(container, eventData.slot1, slot1.id, slot1.count, slot1.data, slot1.extra, connectedClient.getPlayerUid()) != slot1.count) return;
+                    if(transferPolicy2 && transferPolicy2.transfer(container, eventData.slot1, slot2.id, slot2.count, slot2.data, slot2.extra, connectedClient.getPlayerUid()) != slot2.count) return;
                     player.setInventorySlot(eventData.slot2, slot1.id, slot1.count, slot1.data, slot1.extra);
                     container.setSlot(eventData.slot1, slot2.id, slot2.count, slot2.data, slot2.extra);
                     container.sendChanges();
@@ -167,8 +172,7 @@ const InventoryGUI = (function () {
                 }
                 var _count = slot2.id != 0 ? Math.min(eventData.count, Item.getMaxStack(slot2.id) - slot2.count) : eventData.count;
                 if(_count <= 0) return;
-                var transferCount;
-                if(transferPolicy1)_count = (transferCount = transferPolicy1.transfer(container, eventData.slot1, slot1.id, _count, slot1.data, slot1.extra, client.getPlayerUid())) != undefined && transferCount != null ? transferCount : _count;
+                if(transferPolicy1)_count = (transferCount = transferPolicy1.transfer(container, eventData.slot1, slot1.id, _count, slot1.data, slot1.extra, connectedClient.getPlayerUid())) != undefined && transferCount != null ? transferCount : _count;
                 player.setInventorySlot(eventData.slot2, slot1.id, slot2.id != 0 ? slot2.count + _count : _count, slot1.data, slot1.extra);
                 container.setSlot(eventData.slot1, slot1.id, slot1.count - _count, slot1.data, slot1.extra);
                 container.getSlot(eventData.slot1).validate();
